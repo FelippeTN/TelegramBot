@@ -11,4 +11,5 @@ bot = telebot.TeleBot(API_KEY)
 def greet(message):
     bot.reply_to(message, 'Hey! Como você esta?')
 
+print('Iniciando BOT')
 bot.polling()
