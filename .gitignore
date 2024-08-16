@@ -4,3 +4,8 @@
 venv
 env
 
+# Cache
+__pycache__/
+
+# LOG
+bot.log
