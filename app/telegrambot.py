@@ -2,7 +2,6 @@ import os
 import logging
 from dotenv import load_dotenv
 from app.groq_call import groc_config
-
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
@@ -31,7 +30,6 @@ logger.setLevel(logging.INFO)
 # Suprimir logging excessivo da biblioteca httpx
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-
 API_KEY = os.getenv('API_KEY')
 
 class TelegramBot:
@@ -40,7 +38,6 @@ class TelegramBot:
         self.default_message_reply = "Olá! Gostaria de conversar com Nalim's BOT?"
         self.TELEGRAM_TOKEN = API_KEY
         self.esperando_resposta = False
-
 
     def start_message(self):
         logger.info("Menu loaded...")
@@ -67,10 +64,10 @@ class TelegramBot:
 
         # Condicional baseado na escolha do usuário
         if query.data == "action_1":
-            response_text = "Ok! Faça sua pergunta:"
+            response_text = """Ok, caso queira sair da conversa, é só digitar "sair"!\nFaça sua pergunta:"""
             self.esperando_resposta = True
         elif query.data == "action_2":
-            response_text = "OK! Quando precisar de mim, estarei a disposição!"
+            response_text = "OK! Quando precisar de mim, estarei à disposição!"
         else:
             response_text = "Opção desconhecida."
         
@@ -78,28 +75,24 @@ class TelegramBot:
         # Edita a mensagem original com a resposta
         await query.edit_message_text(text=response_text)
         
-        
     async def handle_message(self, update: Update, context: CallbackContext):
-         if self.esperando_resposta:
-            user_message = update.message.text.lower()
-            if user_message != "sair":
-                logger.info('Groq está sendo chamado...')
-                response_text = groc_config(user_message)
-                await update.message.reply_text(text=response_text)
-            else:
-                self.esperando_resposta = False
-                await update.message.reply_text(text="Encerrando a conversa. Até logo!")
-            
-            
-    async def start(self, update: Update, context: CallbackContext):
-        logger.info("Comando /start recebido")
-        menu = self.start_message()
-        keyboard = self.generate_keyboard(menu)
-        await update.message.reply_text(
-            text=menu, reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        user_message = update.message.text.lower()
         
-
+        if not self.esperando_resposta:
+            # Inicia a conversa com a mensagem padrão e teclado
+            menu = self.start_message()
+            keyboard = self.generate_keyboard(menu)
+            await update.message.reply_text(
+                text=menu, reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        elif user_message != "sair":
+            logger.info('Groq está sendo chamado...')
+            response_text = groc_config(user_message)
+            await update.message.reply_text(text=response_text)
+        else:
+            self.esperando_resposta = False
+            await update.message.reply_text(text="Encerrando a conversa. Até logo!")
+            
     def start_bot(self):
         try:
             logger.info("Inicializando a aplicação do bot")
@@ -113,15 +106,11 @@ class TelegramBot:
                 .build()
             )
             
-            # Adicionar os handlers
-            start_handler = CommandHandler("start", self.start)
-            application.add_handler(start_handler)
-            
             # Handler para lidar com as respostas do teclado inline
             button_handler = CallbackQueryHandler(self.button)
             application.add_handler(button_handler)
             
-            # Handler para lidar com as mensagens de texto
+            # Handler para lidar com todas as mensagens de texto
             message_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), self.handle_message)
             application.add_handler(message_handler)
             
