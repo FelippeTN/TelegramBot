@@ -39,6 +39,8 @@ class TelegramBot:
         logger.info("Inicializando o TelegramChatbot")
         self.default_message_reply = "Olá! Gostaria de conversar com Nalim's BOT?"
         self.TELEGRAM_TOKEN = API_KEY
+        self.esperando_resposta = False
+
 
     def start_message(self):
         logger.info("Menu loaded...")
@@ -66,6 +68,7 @@ class TelegramBot:
         # Condicional baseado na escolha do usuário
         if query.data == "action_1":
             response_text = "Ok! Faça sua pergunta:"
+            self.esperando_resposta = True
         elif query.data == "action_2":
             response_text = "OK! Quando precisar de mim, estarei a disposição!"
         else:
@@ -74,6 +77,20 @@ class TelegramBot:
         logger.info('Opção selecionada pelo usuário')
         # Edita a mensagem original com a resposta
         await query.edit_message_text(text=response_text)
+        
+        
+    async def handle_message(self, update: Update, context: CallbackContext):
+         if self.esperando_resposta:
+            user_message = update.message.text.lower()
+            if user_message != "sair":
+                logger.info('Groq está sendo chamado...')
+                response_text = groc_config(user_message)
+                await update.message.reply_text(text=response_text)
+            else:
+                self.esperando_resposta = False
+                await update.message.reply_text(text="Encerrando a conversa. Até logo!")
+            
+            
     async def start(self, update: Update, context: CallbackContext):
         logger.info("Comando /start recebido")
         menu = self.start_message()
@@ -81,7 +98,6 @@ class TelegramBot:
         await update.message.reply_text(
             text=menu, reply_markup=InlineKeyboardMarkup(keyboard)
         )
-        
         
 
     def start_bot(self):
@@ -104,6 +120,10 @@ class TelegramBot:
             # Handler para lidar com as respostas do teclado inline
             button_handler = CallbackQueryHandler(self.button)
             application.add_handler(button_handler)
+            
+            # Handler para lidar com as mensagens de texto
+            message_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), self.handle_message)
+            application.add_handler(message_handler)
             
             # Iniciar o bot
             application.run_polling()
